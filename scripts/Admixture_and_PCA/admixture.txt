@@ -1,0 +1,10 @@
+admixture
+
+#variant normalization
+/bcftools norm -Ob -m -any dsim_allchr.recode.vcf -o dsim_allchr
+
+#reformat file in plink
+./plink --bcf dsim_allchr --keep-allele-order --vcf-idspace-to _ --const-fid --split-x b37 no-fail --make-bed --out output --allow-extra-chr 0
+
+#do admixture analysis
+for K in 1 2 3; do ./admixture --cv output.bed $K | tee log${K}.out; done

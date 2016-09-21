@@ -1,0 +1,252 @@
+#!/bin/sh
+#PBS -l walltime=400:00:00
+#PBS -l nodes=1:ppn=8
+#PBS -l mem=48000mb,vmem=48000mb
+#PBS -q cegs
+
+# general function that exits after printing its text argument
+#   in a standard format which can be easily grep'd.
+err() {
+  echo "$1...exiting";
+  exit 1; # any non-0 exit code signals an error
+}
+# function to check return code of programs.
+# exits with standard message if code is non-zero;
+# otherwise displays completiong message and date.
+#   arg 1 is the return code (usually $?)
+#   arg2 is text describing what ran
+ckRes() {
+  if [ "$1" == "0" ]; then
+    echo "..Done $2 `date`";
+  else
+    err "$2 returned non-0 exit code $1";
+  fi
+}
+# function that checks if a file exists
+#   arg 1 is the file name
+#   arg2 is text describing the file (optional)
+ckFile() {
+  if [ ! -e "$1" ]; then
+    err "$2 File '$1' not found";
+  fi
+}
+# function that checks if a file exists and
+#   that it has non-0 length. needed because
+#   programs don't always return non-0 return
+#   codes, and worse, they also create their
+#   output file with 0 length so that just
+#   checking for its existence is not enough
+#   to ensure the program ran properly
+ckFileSz() {
+  ckFile $1 $2;
+  SZ=`ls -l $1 | awk '{print $5}'`;
+  if [ "$SZ" == "0" ]; then
+    err "$2 file '$1' is zero length";
+  fi
+}
+ 
+# Find the path of the BWA reference based on the assembly
+#   name provided. Assumes a common directory structure
+# At TACC the structure is rooted a common BioITeam directory.
+#   Set WORK_COMMON appropriately outside this script if
+#   not running at TACC.
+WORK_COMMON=/home/cmb-07/sn1/ssignor/next-gen_example_sim;
+# Note: reference indexes created with bwa 0.5.9 are *not*
+#   compatible with bwa 0.6 or higher. So we go to some
+#   trouble to figure out which BWA version we have
+BWA_DIR="$WORK_COMMON/bin/bwa-0.7.5a";
+SAM_DIR="$WORK_COMMON/bin/samtools-0.1.19";
+REFBASE="$WORK_COMMON/reference";
+REF_PFX="$REFBASE/dsimV2-Mar2013-Genbank.fa";
+
+OUT_PFX=simulans_multisample
+
+/home/cmb-07/sn1/ssignor/jre1.7.0/bin/java -Xmx20g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar \
+	-T GenotypeGVCFs \
+	-R $REF_PFX \
+	-L X \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz282/Sz282/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz289/Sz289/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz274/Sz274/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz272/Sz272/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz268/Sz268/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz293/Sz293/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz270/Sz270/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz275/Sz275/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz288/Sz288/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz286/Sz286/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz3/Sz3/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz4/Sz4/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz6/Sz6/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz9/Sz9/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz12/Sz12/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz14/Sz14/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz15/Sz15/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz19/Sz19/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz21/Sz21/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz22/Sz22/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz24/Sz24/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz31/Sz31/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz33/Sz33/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz39/Sz39/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz41/Sz41/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz48/Sz48/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz54/Sz54/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz60/Sz60/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz71/Sz71/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz75/Sz75/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz80/Sz80/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz83/Sz83/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz97/Sz97/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz101/Sz101/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz102/Sz102/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz103/Sz103/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz110/Sz110/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz113/Sz113/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz115/Sz115/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz116/Sz116/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz120/Sz120/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz121/Sz121/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz123/Sz123/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz124/Sz124/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz125/Sz125/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz126/Sz126/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz129/Sz129/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz130/Sz130/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz133/Sz133/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz136/Sz136/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz138/Sz138/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz145/Sz145/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz151/Sz151/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz155/Sz155/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz158/Sz158/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz160/Sz160/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz162/Sz162/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz163/Sz163/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz164/Sz164/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz166/Sz166/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz169/Sz169/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz173/Sz173/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz175/Sz175/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz176/Sz176/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz182/Sz182/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz184/Sz184/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz185/Sz185/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz186/Sz186/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz189/Sz189/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz190/Sz190/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz191/Sz191/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz193/Sz193/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz196/Sz196/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz200/Sz200/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz202/Sz202/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz217/Sz217/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz229/Sz229/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz233/Sz233/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz234/Sz234/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz240/Sz240/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz243/Sz243/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz244/Sz244/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz246/Sz246/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz252/Sz252/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz253/Sz253/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz257/Sz257/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz259/Sz259/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz261/Sz261/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz265/Sz265/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz266/Sz266/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz267/Sz267/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz214/Sz214/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz220/Sz220/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz225/Sz225/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz228/Sz228/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz236/Sz236/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz238/Sz238/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz47/Sz47/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz53/Sz53/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz56/Sz56/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz58/Sz58/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz64/Sz64/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz68/Sz68/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz77/Sz77/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz11/Sz11/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz172/Sz172/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz194/Sz194/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz199/Sz199/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz203/Sz203/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz205/Sz205/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz16/Sz16/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz29/Sz29/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz30/Sz30/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz40/Sz40/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz45/Sz45/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz5/Sz5/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz8/Sz8/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz13/Sz13/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz26/Sz26/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz27/Sz27/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz82/Sz82/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz87/Sz87/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz91/Sz91/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz99/Sz99/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz106/Sz106/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz111/Sz111/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz128/Sz128/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz208/Sz208/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz210/Sz210/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz212/Sz212/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz237/Sz237/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz241/Sz241/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz248/Sz248/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz131/Sz131/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz137/Sz137/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz140/Sz140/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz142/Sz142/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz146/Sz146/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz153/Sz153/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz57/Sz57/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz62/Sz62/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz65/Sz65/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz76/Sz76/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz93/Sz93/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz100/Sz100/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz127/Sz127/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz90/Sz90/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz84/Sz84/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz201/Sz201/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz197/Sz197/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz181/Sz181/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz168/Sz168/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz154/Sz154/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz135/Sz135/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz139/Sz139/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz141/Sz141/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz143/Sz143/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz149/Sz149/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz249/Sz249/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz254/Sz254/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz262/Sz262/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz271/Sz271/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz213/Sz213/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz218/Sz218/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz223/Sz223/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz226/Sz226/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz232/Sz232/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz281/Sz281/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz285/Sz285/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz287/Sz287/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz291/Sz291/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz298/Sz298/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz37/Sz37/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz43/Sz43/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz46/Sz46/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz49/Sz49/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz52/Sz52/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz204/Sz204/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz207/Sz207/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz209/Sz209/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz211/Sz211/*.g.vcf \
+--variant /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz299/Sz299/*.g.vcf \
+-o /home/rcf-40/ssignor/cmb/next-gen_example_sim/sim_multisample_GVCF_X.SNPs.vcf;
+
+done

@@ -1,0 +1,11 @@
+
+#distance matrix
+./plink --ped /Users/sarah/vcftools_0.1.13/bin/dsim_2l_pruned.ped --map /Users/sarah/vcftools_0.1.13/bin/dsim_2l_pruned.map --distance
+
+
+#cluster analysis
+./plink --ped /Users/sarah/vcftools_0.1.13/bin/dsim_2l_thin.ped --map /Users/sarah/vcftools_0.1.13/bin/dsim_2l_thin.map --cluster
+
+
+#IBD/IBS analysis
+./plink --ped /Users/sarah/vcftools_0.1.13/bin/dsim_2l_thin.ped --map /Users/sarah/vcftools_0.1.13/bin/dsim_2l_thin.map --genome-full --ppc-gap 1000

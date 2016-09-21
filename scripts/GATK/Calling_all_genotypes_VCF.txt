@@ -1,0 +1,267 @@
+#!/bin/sh
+#PBS -l walltime=200:00:00
+#PBS -l nodes=1:ppn=16
+#PBS -l mem=96000mb,vmem=96000mb
+#PBS -q cmb
+
+# general function that exits after printing its text argument
+#   in a standard format which can be easily grep'd.
+err() {
+  echo "$1...exiting";
+  exit 1; # any non-0 exit code signals an error
+}
+# function to check return code of programs.
+# exits with standard message if code is non-zero;
+# otherwise displays completiong message and date.
+#   arg 1 is the return code (usually $?)
+#   arg2 is text describing what ran
+ckRes() {
+  if [ "$1" == "0" ]; then
+    echo "..Done $2 `date`";
+  else
+    err "$2 returned non-0 exit code $1";
+  fi
+}
+# function that checks if a file exists
+#   arg 1 is the file name
+#   arg2 is text describing the file (optional)
+ckFile() {
+  if [ ! -e "$1" ]; then
+    err "$2 File '$1' not found";
+  fi
+}
+# function that checks if a file exists and
+#   that it has non-0 length. needed because
+#   programs don't always return non-0 return
+#   codes, and worse, they also create their
+#   output file with 0 length so that just
+#   checking for its existence is not enough
+#   to ensure the program ran properly
+ckFileSz() {
+  ckFile $1 $2;
+  SZ=`ls -l $1 | awk '{print $5}'`;
+  if [ "$SZ" == "0" ]; then
+    err "$2 file '$1' is zero length";
+  fi
+}
+ 
+# Find the path of the BWA reference based on the assembly
+#   name provided. Assumes a common directory structure
+# At TACC the structure is rooted a common BioITeam directory.
+#   Set WORK_COMMON appropriately outside this script if
+#   not running at TACC.
+WORK_COMMON=/home/cmb-07/sn1/ssignor/next-gen_example_sim;
+# Note: reference indexes created with bwa 0.5.9 are *not*
+#   compatible with bwa 0.6 or higher. So we go to some
+#   trouble to figure out which BWA version we have
+BWA_DIR="$WORK_COMMON/bin/bwa-0.7.5a";
+SAM_DIR="$WORK_COMMON/bin/samtools-0.1.19";
+REFBASE="$WORK_COMMON/reference";
+REF_PFX="$REFBASE/dsimV2-Mar2013-Genbank.fa";
+
+OUT_PFX=simulans_multisample
+
+/home/cmb-07/sn1/ssignor/jre1.7.0/bin/java -Xmx20g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar \
+	-T HaplotypeCaller \
+	-R $REF_PFX \
+	-L 2R \
+	-nct 16 \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/74/74/74.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/84/84/84.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/128/128/128.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/132/132/132.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/176/176/176.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/w501/w501/w501.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/MD106/MD106/MD106.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/MD199/MD199/MD199.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/newc/newc/newc.sorted.dupsmarked.realigned.bam \
+-I /home/cmb-07/sn1/ssignor/next-gen_example_sim/3CI_raw/C167.4/C167.4/C167.4.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz282/Sz282/Sz282.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz289/Sz289/Sz289.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz274/Sz274/Sz274.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz272/Sz272/Sz272.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz268/Sz268/Sz268.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz293/Sz293/Sz293.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz270/Sz270/Sz270.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz275/Sz275/Sz275.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz288/Sz288/Sz288.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz286/Sz286/Sz286.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz3/Sz3/Sz3.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz4/Sz4/Sz4.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz6/Sz6/Sz6.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz9/Sz9/Sz9.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz12/Sz12/Sz12.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz14/Sz14/Sz14.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz15/Sz15/Sz15.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz19/Sz19/Sz19.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz21/Sz21/Sz21.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz22/Sz22/Sz22.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz24/Sz24/Sz24.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz31/Sz31/Sz31.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz33/Sz33/Sz33.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz39/Sz39/Sz39.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz41/Sz41/Sz41.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz48/Sz48/Sz48.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz54/Sz54/Sz54.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz54_2/Sz54/Sz54.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz60/Sz60/Sz60.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz71/Sz71/Sz71.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz75/Sz75/Sz75.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz80/Sz80/Sz80.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz83/Sz83/Sz83.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz97/Sz97/Sz97.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz101/Sz101/Sz101.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz102/Sz102/Sz102.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz103/Sz103/Sz103.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz110/Sz110/Sz110.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz113/Sz113/Sz113.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz115/Sz115/Sz115.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz116/Sz116/Sz116.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz120/Sz120/Sz120.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz121/Sz121/Sz121.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz123/Sz123/Sz123.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz124/Sz124/Sz124.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz125/Sz125/Sz125.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz126/Sz126/Sz126.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz129/Sz129/Sz129.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz130/Sz130/Sz130.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz133/Sz133/Sz133.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz136/Sz136/Sz136.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz138/Sz138/Sz138.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz145/Sz145/Sz145.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz151/Sz151/Sz151.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz155/Sz155/Sz155.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz158/Sz158/Sz158.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz160/Sz160/Sz160.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz162/Sz162/Sz162.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz163/Sz163/Sz163.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz164/Sz164/Sz164.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz166/Sz166/Sz166.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz169/Sz169/Sz169.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz173/Sz173/Sz173.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz175/Sz175/Sz175.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz176/Sz176/Sz176.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz182/Sz182/Sz182.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz184/Sz184/Sz184.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz185/Sz185/Sz185.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz186/Sz186/Sz186.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz189/Sz189/Sz189.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz190/Sz190/Sz190.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz191/Sz191/Sz191.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz193/Sz193/Sz193.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz196/Sz196/Sz196.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz200/Sz200/Sz200.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz202/Sz202/Sz202.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz217/Sz217/Sz217.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz229/Sz229/Sz229.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz233/Sz233/Sz233.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz234/Sz234/Sz234.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz240/Sz240/Sz240.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz243/Sz243/Sz243.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz244/Sz244/Sz244.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz246/Sz246/Sz246.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz252/Sz252/Sz252.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz253/Sz253/Sz253.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz257/Sz257/Sz257.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz259/Sz259/Sz259.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz261/Sz261/Sz261.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz265/Sz265/Sz265.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz266/Sz266/Sz266.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz267/Sz267/Sz267.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz214/Sz214/Sz214.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz220/Sz220/Sz220.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz225/Sz225/Sz225.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz228/Sz228/Sz228.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz236/Sz236/Sz236.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz238/Sz238/Sz238.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz47/Sz47/Sz47.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz53/Sz53/Sz53.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz56/Sz56/Sz56.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz58/Sz58/Sz58.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz64/Sz64/Sz64.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz68/Sz68/Sz68.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz77/Sz77/Sz77.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz11/Sz11/Sz11.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz172/Sz172/Sz172.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz194/Sz194/Sz194.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz199/Sz199/Sz199.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz203/Sz203/Sz203.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz205/Sz205/Sz205.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz16/Sz16/Sz16.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz29/Sz29/Sz29.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz30/Sz30/Sz30.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz40/Sz40/Sz40.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz45/Sz45/Sz45.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz5/Sz5/Sz5.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz8/Sz8/Sz8.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz13/Sz13/Sz13.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz26/Sz26/Sz26.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz27/Sz27/Sz27.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz82/Sz82/Sz82.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz87/Sz87/Sz87.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz91/Sz91/Sz91.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz99/Sz99/Sz99.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz106/Sz106/Sz106.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz111/Sz111/Sz111.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz128/Sz128/Sz128.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz208/Sz208/Sz208.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz210/Sz210/Sz210.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz212/Sz212/Sz212.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz237/Sz237/Sz237.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz241/Sz241/Sz241.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz248/Sz248/Sz248.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz131/Sz131/Sz131.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz137/Sz137/Sz137.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz140/Sz140/Sz140.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz142/Sz142/Sz142.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz146/Sz146/Sz146.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz153/Sz153/Sz153.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz57/Sz57/Sz57.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz62/Sz62/Sz62.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz65/Sz65/Sz65.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz76/Sz76/Sz76.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_md106ts/md106ts/md106ts.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz93/Sz93/Sz93.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz100/Sz100/Sz100.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz127/Sz127/Sz127.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz90/Sz90/Sz90.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz84/Sz84/Sz84.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz201/Sz201/Sz201.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz197/Sz197/Sz197.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz181/Sz181/Sz181.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz168/Sz168/Sz168.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz154/Sz154/Sz154.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz135/Sz135/Sz135.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz139/Sz139/Sz139.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz141/Sz141/Sz141.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz143/Sz143/Sz143.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz149/Sz149/Sz149.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz249/Sz249/Sz249.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz254/Sz254/Sz254.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz262/Sz262/Sz262.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz271/Sz271/Sz271.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz213/Sz213/Sz213.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz218/Sz218/Sz218.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz223/Sz223/Sz223.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz226/Sz226/Sz226.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz232/Sz232/Sz232.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz281/Sz281/Sz281.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz285/Sz285/Sz285.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz287/Sz287/Sz287.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz291/Sz291/Sz291.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz298/Sz298/Sz298.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz37/Sz37/Sz37.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz43/Sz43/Sz43.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz46/Sz46/Sz46.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz49/Sz49/Sz49.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz52/Sz52/Sz52.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_nc485/nc485/nc485.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz204/Sz204/Sz204.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz207/Sz207/Sz207.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz209/Sz209/Sz209.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz211/Sz211/Sz211.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz299/Sz299/Sz299.sorted.dupsmarked.realigned.bam \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_w501/w501/w501.sorted.dupsmarked.realigned.bam \
+-o /home/rcf-40/ssignor/cmb/next-gen_example_sim/sim_multisample_raw_2R.SNPs.vcf;
+
+done

@@ -1,0 +1,26 @@
+#!/bin/sh
+#PBS -l walltime=10:00:00
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=2000mb,vmem=8000mb
+#PBS -q cmb
+ 
+cd /home/rcf-40/ssignor/cmb/next-gen_example_sim/ste
+mkdir Solexa_Stats
+mkdir trimmed
+files=(*.txt)
+for f in "${files[@]}";
+do
+perl ../../bin/SolexaQA_v.2.2/SolexaQA.pl $f -d Solexa_Stats;
+perl ../../bin/SolexaQA_v.2.2/DynamicTrim.pl $f -d trimmed -sanger;
+done
+cd trimmed
+mkdir stats
+mv *.trimmed_segments* stats/
+rename '.txt.trimmed' '.txt' ./*
+cd ..
+mkdir raw
+mv *.txt raw/
+mv trimmed/*.txt ./
+cd ../..
+done
+

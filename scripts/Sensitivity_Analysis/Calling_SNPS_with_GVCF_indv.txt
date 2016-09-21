@@ -1,0 +1,83 @@
+#!/bin/sh
+#PBS -l walltime=200:50:00
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=2000mb,vmem=8000mb
+#PBS -q cegs 
+
+# general function that exits after printing its text argument
+#   in a standard format which can be easily grep'd.
+err() {
+  echo "$1...exiting";
+  exit 1; # any non-0 exit code signals an error
+}
+# function to check return code of programs.
+# exits with standard message if code is non-zero;
+# otherwise displays completiong message and date.
+#   arg 1 is the return code (usually $?)
+#   arg2 is text describing what ran
+ckRes() {
+  if [ "$1" == "0" ]; then
+    echo "..Done $2 `date`";
+  else
+    err "$2 returned non-0 exit code $1";
+  fi
+}
+# function that checks if a file exists
+#   arg 1 is the file name
+#   arg2 is text describing the file (optional)
+ckFile() {
+  if [ ! -e "$1" ]; then
+    err "$2 File '$1' not found";
+  fi
+}
+# function that checks if a file exists and
+#   that it has non-0 length. needed because
+#   programs don't always return non-0 return
+#   codes, and worse, they also create their
+#   output file with 0 length so that just
+#   checking for its existence is not enough
+#   to ensure the program ran properly
+ckFileSz() {
+  ckFile $1 $2;
+  SZ=`ls -l $1 | awk '{print $5}'`;
+  if [ "$SZ" == "0" ]; then
+    err "$2 file '$1' is zero length";
+  fi
+}
+ 
+# Find the path of the BWA reference based on the assembly
+#   name provided. Assumes a common directory structure
+# At TACC the structure is rooted a common BioITeam directory.
+#   Set WORK_COMMON appropriately outside this script if
+#   not running at TACC.
+WORK_COMMON=/home/cmb-07/sn1/ssignor/next-gen_example_sim;
+# Note: reference indexes created with bwa 0.5.9 are *not*
+#   compatible with bwa 0.6 or higher. So we go to some
+#   trouble to figure out which BWA version we have
+BWA_DIR="$WORK_COMMON/bin/bwa-0.7.5a";
+SAM_DIR="$WORK_COMMON/bin/samtools-0.1.19";
+REFBASE="$WORK_COMMON/reference";
+REF_PFX="$REFBASE/dsimV2-Mar2013-Genbank.fa";
+
+cd /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz218/Sz218
+files=(*.fastq)
+for f in "${files[@]}";
+do
+str=$f
+OUT_PFX="$(cut -d '.' -f 1 <<<"$str" )"
+echo $OUT_PFX
+
+
+
+
+/home/cmb-07/sn1/ssignor/jre1.7.0/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar \
+	-T HaplotypeCaller \
+    --emitRefConfidence GVCF \
+    --variant_index_type LINEAR \
+    --variant_index_parameter 128000 \
+	-R $REF_PFX \
+    -L X \
+-I /home/rcf-40/ssignor/cmb/next-gen_example_sim/assembled_lanes1-8/reduced_simulans/Sample_Sz218/Sz218/Sz218.sorted.dupsmarked.realigned.bam \
+-o $OUT_PFX.g.vcf;
+
+done

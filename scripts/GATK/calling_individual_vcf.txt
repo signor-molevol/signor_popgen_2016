@@ -1,0 +1,232 @@
+#!/bin/sh
+#PBS -l walltime=10:00:00
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=2000mb,vmem=8000mb
+#PBS -q cmb
+
+# general function that exits after printing its text argument
+#   in a standard format which can be easily grep'd.
+err() {
+  echo "$1...exiting";
+  exit 1; # any non-0 exit code signals an error
+}
+# function to check return code of programs.
+# exits with standard message if code is non-zero;
+# otherwise displays completiong message and date.
+#   arg 1 is the return code (usually $?)
+#   arg2 is text describing what ran
+ckRes() {
+  if [ "$1" == "0" ]; then
+    echo "..Done $2 `date`";
+  else
+    err "$2 returned non-0 exit code $1";
+  fi
+}
+# function that checks if a file exists
+#   arg 1 is the file name
+#   arg2 is text describing the file (optional)
+ckFile() {
+  if [ ! -e "$1" ]; then
+    err "$2 File '$1' not found";
+  fi
+}
+# function that checks if a file exists and
+#   that it has non-0 length. needed because
+#   programs don't always return non-0 return
+#   codes, and worse, they also create their
+#   output file with 0 length so that just
+#   checking for its existence is not enough
+#   to ensure the program ran properly
+ckFileSz() {
+  ckFile $1 $2;
+  SZ=`ls -l $1 | awk '{print $5}'`;
+  if [ "$SZ" == "0" ]; then
+    err "$2 file '$1' is zero length";
+  fi
+}
+ 
+# Find the path of the BWA reference based on the assembly
+#   name provided. Assumes a common directory structure
+# At TACC the structure is rooted a common BioITeam directory.
+#   Set WORK_COMMON appropriately outside this script if
+#   not running at TACC.
+WORK_COMMON=/home/cmb-07/sn1/ssignor/next-gen_example_sim;
+# Note: reference indexes created with bwa 0.5.9 are *not*
+#   compatible with bwa 0.6 or higher. So we go to some
+#   trouble to figure out which BWA version we have
+BWA_DIR="$WORK_COMMON/bin/bwa-0.7.5a";
+SAM_DIR="$WORK_COMMON/bin/samtools-0.1.19";
+REFBASE="$WORK_COMMON/reference";
+REF_PFX="$REFBASE/dsimV2-Mar2013-Genbank.fa";
+
+   /home/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/picard-tools-1/picard-tools-1.89/CreateSequenceDictionary.jar R= $REF_PFX O= /home/cmb-07/sn1/ssignor/next-gen_example_sim/reference/dsimV2-Mar2013-Genbank.dict;
+ # Make sure version information for our two programs is
+#   part of our execution record. This is done by
+#   calling the programs with no arguments
+echo "---------------------------------------------------------";
+echo "Program version information";
+echo "---------------------------------------------------------";
+$BWA_DIR/bwa;
+$SAM_DIR/samtools;   
+ # Read group information is part of the SAM/BAM header that desribes
+#   what is being aligned. When multiple lanes of data are combined
+#   from separate BAM files, read groups provide identification of the
+#   source of each read. Variant callers such as GATK depend on
+#   having well-defined read group information.
+# Here we set the RG variable to be the read group line we want
+#   inserted in the header.
+cd /home/cmb-07/sn1/ssignor/next-gen_example_sim/sim9-10_trimmed/Sample_w501
+files=(*.fastq)
+for f in "${files[@]}";
+do
+str=$f
+OUT_PFX="$(cut -d '.' -f 1 <<<"$str" )"
+echo $OUT_PFX 
+
+READ_GRP=$OUT_PFX;
+RG='@RG\tID:'$f'\tPL:ILLUMINA\tSM:'$READ_GRP'\tDS:pfx='$REF_PFX;
+ 
+
+
+ 
+# ------------------
+# The actual work!
+# ------------------
+ 
+
+    mkdir $OUT_PFX;
+  
+
+    echo "---------------------------------------------------------";
+    echo "Running bwa mem (single end reads)";
+    echo "---------------------------------------------------------";
+    $BWA_DIR/bwa mem -M -R $RG $REF_PFX $f > $OUT_PFX/$OUT_PFX.sam;
+    ckRes $? "bwa mem";
+    ckFileSz "$OUT_PFX/$OUT_PFX.sam";
+    
+     $SAM_DIR/samtools view -b -S $OUT_PFX/$OUT_PFX.sam > $OUT_PFX/$OUT_PFX.bam;
+  	ckFileSz "$OUT_PFX/$OUT_PFX.bam";
+      	  
+ echo "---------------------------------------------------------";
+echo "Creating sorted, indexed bam file";
+echo "---------------------------------------------------------";
+echo "Sorting '$OUT_PFX.bam'...";
+$SAM_DIR/samtools sort $OUT_PFX/$OUT_PFX.bam $OUT_PFX/$OUT_PFX.sorted;
+ckRes $? "samtools sort";
+ckFileSz "$OUT_PFX/$OUT_PFX.sorted.bam";
+ 
+echo "Indexing '$OUT_PFX.sorted.bam'...";
+$SAM_DIR/samtools index $OUT_PFX/$OUT_PFX.sorted.bam;
+ckRes $? "samtools index";
+ckFileSz "$OUT_PFX/$OUT_PFX.sorted.bam.bai";
+ 
+echo "---------------------------------------------------------";
+echo "Collecting alignment statistics";
+echo "---------------------------------------------------------";
+echo "Running flagstat...";
+$SAM_DIR/samtools flagstat $OUT_PFX/$OUT_PFX.sorted.bam | tee $OUT_PFX/$OUT_PFX.flagstat.txt;
+ckRes $? "samtools flagstat";
+ckFileSz "$OUT_PFX/$OUT_PFX.flagstat.txt";
+ 
+# If we make it here, all went well. Exit with a standard
+#   message that can be easily grep'd
+echo "---------------------------------------------------------";
+echo "All bwa alignment tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+
+/home/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/picard-tools-1/picard-tools-1.89/MarkDuplicates.jar I=$OUT_PFX/$OUT_PFX.sorted.bam O=$OUT_PFX/$OUT_PFX.sorted.dupsmarked.bam M=$OUT_PFX/$OUT_PFX.picard_metrics.txt;
+ckFileSz "$OUT_PFX/$OUT_PFX.sorted.dupsmarked.bam";
+
+echo "---------------------------------------------------------";
+echo "All Mark duplicates tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+echo "Indexing '$OUT_PFX.sorted.dupsmarked.bam'...";
+$SAM_DIR/samtools index $OUT_PFX/$OUT_PFX.sorted.dupsmarked.bam;
+ckRes $? "samtools index";
+ckFileSz "$OUT_PFX/$OUT_PFX.sorted.dupsmarked.bam.bai";
+
+/auto/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.1-1/GenomeAnalysisTK.jar \
+-T RealignerTargetCreator \
+-R $REF_PFX \
+-I $OUT_PFX/$OUT_PFX.sorted.dupsmarked.bam \
+-o $OUT_PFX/$OUT_PFX.sorted.dupsmarked.intervals;
+ckFileSz "$OUT_PFX/$OUT_PFX.sorted.dupsmarked.intervals";
+
+echo "---------------------------------------------------------";
+echo "All Realigner tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+
+/home/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.1-1/GenomeAnalysisTK.jar \
+	-T IndelRealigner \
+	-R $REF_PFX \
+	-I $OUT_PFX/$OUT_PFX.sorted.dupsmarked.bam \
+	-targetIntervals $OUT_PFX/$OUT_PFX.sorted.dupsmarked.intervals \
+	-o $OUT_PFX/$OUT_PFX.sorted.dupsmarked.realigned.bam;
+ckFileSz "$OUT_PFX/$OUT_PFX.sorted.dupsmarked.realigned.bam";
+
+echo "---------------------------------------------------------";
+echo "All INDEL tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+
+
+	$SAM_DIR/samtools index $OUT_PFX/$OUT_PFX.sorted.dupsmarked.realigned.bam;
+	ckRes $? "samtools index";
+	ckFileSz "$OUT_PFX/$OUT_PFX.sorted.dupsmarked.realigned.bam.bai";
+
+	/home/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.1-1/GenomeAnalysisTK.jar \
+	-T UnifiedGenotyper \
+	-glm SNP \
+	-R $REF_PFX \
+	-I $OUT_PFX/$OUT_PFX.sorted.dupsmarked.realigned.bam \
+	-o $OUT_PFX/$OUT_PFX.SNPs.vcf;
+ckFileSz "$OUT_PFX/$OUT_PFX.SNPs.vcf";
+
+echo "---------------------------------------------------------";
+echo "All SNP tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+
+
+	/home/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.1-1/GenomeAnalysisTK.jar \
+	-T UnifiedGenotyper \
+	-glm INDEL \
+	-R $REF_PFX \
+	-I $OUT_PFX/$OUT_PFX.sorted.dupsmarked.realigned.bam \
+	-o $OUT_PFX/$OUT_PFX.INDELs.vcf;
+ckFileSz "$OUT_PFX/$OUT_PFX.INDELs.vcf";
+
+echo "---------------------------------------------------------";
+echo "All INDEL tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+
+/home/cmb-07/sn1/ssignor/jdk1.7.0_55/bin/java -Xmx2g -jar /home/cmb-07/sn1/ssignor/next-gen_example_sim/bin/GenomeAnalysisTK-3.1-1/GenomeAnalysisTK.jar \
+	-T VariantFiltration \
+    -R $REF_PFX \
+    --filterExpression "QD < 2.0" --filterName "QD2" \
+    --filterExpression "FS > 60.0" --filterName "FS60" \
+    --filterExpression "MQ < 40.0" --filterName "MQ40" \
+    --filterExpression "HaplotypeScore > 13.0" --filterName "HaplotypeScore13" \
+    --filterExpression "MQRankSum < -12.5" --filterName "MQRankSum125" \
+    --filterExpression "ReadPosRankSum < -8.0" --filterName "ReadPosRankSum8" \
+    -o $OUT_PFX/$OUT_PFX.SNPs_filt.vcf \
+    -V $OUT_PFX/$OUT_PFX.SNPs.vcf;
+ckFileSz "$OUT_PFX/$OUT_PFX.SNPs_filt.vcf";
+
+
+echo "---------------------------------------------------------";
+echo "All FILT tasks completed successfully!";
+echo "`date`";
+echo "---------------------------------------------------------";
+
+
+
+done
+
+
+
+
