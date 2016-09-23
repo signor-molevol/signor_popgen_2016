@@ -1,0 +1,28 @@
+Windowing	Window the X chromosome	"Split into 10kb windows
+
+2085 windows
+
+1863 empty windows
+
+222 windows with data"	HPC	windowMaker_1mai.py	run_windowMaker.qsub	"analysis_10permiss_nolabmel_gvcf.recode.vcf
+
+$PROJ/design_file/windowing_chr_X_design.csv"	"$PROJ/checking_gatk_output/split_vcf/chrX/chrom_X/*.vcf
+
+…/widowList.tsv
+
+…/LOGS"	I pulled just the first column out to make the design file for running jobs on the windowed vcf's : …/windowList_names.tsv	"empty windows are listed in file : 
+../checking_gatk_output/split_vcf/chrX_10kb/empty_windows.txt"	
+	Calculate LD on the windows	Calculate LD on the windows	HPC	plink	run_plink_ld_windowed.qsub	$PROJ/checking_gatk_output/split_vcf/chrX/chrom_X/*.vcf	$PROJ/plink/split_vcf_ld/chromX/dsim_10kb_chromX_#_ld.ld	There will be 222 LD results files.		
+	Average LD in the windows	I need the average LD for each window	HPC	command line	"Cd $FOLDER
+
+ls *.ld | while read filename ; do awk '{sum+=$7} END {print ""Averge,""FILENAME""”,sum/NR}' $filename ; done > chromX_ld_window_avg.txt"	$PROJ/plink/split_vcf_ld/chromX/dsim_10kb_chromX_#_ld.ld	chrom_X_ld_window_avg.txt			
+	Calculate TsD on the windows	
+	
+Calculate Tajima's D on the windows, compare with the vcftools output from windowing.		
+	
+HPC	vcftools	run_tajima_d_windows.qsub	$PROJ/checking_gatk_output/split_vcf/chrX/chrom_X/*.vcf	$PROJ/vcftools_output/tajima_d_split/chrX/dsim_10kb_chromX_#.Tajima.D	There are 222 windows with data, so there will be this many TsD files.		
+
+Combine the results into one file	HPC		awk 'FNR==2{print $0 > "output_test.txt"}' dsim_10kb_chromX_{0..2085}.Tajima.D	$PROJ/vcftools_output/tajima_d_split/chrX/dsim_10kb_chromX_#.Tajima.D	$PROJ/vcftools_output/tajima_d_split/chrX/all_chromX_tajimaD_10kb.Tajima.D			
+Prepare data for comparison	I needed to manipulate the data a bit before I could plot it. I pull it into SAS and merge the LD and TD file together	sas		compare_ld_td.sas	$PROJ/vcftools_output/tajima_d_split/chrX/all_chromX_tajimaD_10kb.Tajima.D	/home/fnew/dsim/vcf_split_td_ld/chrX_ld_and_td.txt			
+Plot LD vs TsD	Plot TsD vs LD, simple scatter	R		plot_ld_vs_td_all_chroms.R	/home/fnew/dsim/vcf_split_td_ld/chrX_ld_and_td.txt	$PROJ/plots/ld_vs_td/chrX_td_vs_ld_10kb.pdf			
+										

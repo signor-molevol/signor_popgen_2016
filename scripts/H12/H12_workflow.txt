@@ -1,0 +1,20 @@
+H12	Prepare data for H12 analyses
+
+Needs to look like:
+Pos   indv1    indv2  …
+181     A           A           A ….
+
+Used script: reformat_vcf_4H12.sas
+
+Then ran H12 analysis using : run_H12peakFinder.qsub	
+
+example:
+-w 400 -j 50 -d 0
+
+python H12_H2H1.py chr3L_for_h12.csv 170 -o chr3L_H12_output_400_50.txt -w 400 -j 50 -d 0
+
+python H12peakFinder.py chr3L_H12_output_400_50.txt -o chr3L_H12_peaks_400_50.txt
+
+	
+Then visualize the peaks using run_H12_viz.qsub
+
