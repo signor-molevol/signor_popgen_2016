@@ -1,0 +1,195 @@
+#Look at heterozygosity
+	vcftools --vcf $VCF --het --out $OUT/simulans_het_per_in
+
+#Look at amount of missing data per individual
+	vcftools —-vcf $VCF --missing-indv --out
+
+#for percent heterozygosity per genotype see calculate_percent_het_indiv_pos_checking.sas
+
+#basic filtering, removes lines with 25% het or 25% missing data or 10%
+#missing from a marker
+
+	vcftools --vcf $VCF --remove-indv Sz116
+	--remove-indv Sz121 --remove-indv Sz158 --remove-indv Sz21 --remove-indv
+	Sz237 --remove-indv Sz286 --remove-indv Sz76 --remove-indv Sz176
+	--remove-indv md106ts --remove-indv nc485 --remove-indv newc
+	--remove-indv w501 --remove-indv 128 --remove-indv 132 --remove-indv 176
+	--remove-indv 74 --remove-indv 84 --remove-indv C167.4 --remove-indv
+	MD106 --remove-indv MD199 --remove-indv STE  --remove-indv Sz57
+	--remove-indv Sz210 --max-missing-count 17 --remove-indels --min-alleles 2
+	--max-alleles 2 --recode --out 
+
+
+
+#Look at identity by descent distance matrix (SNPS thinned to one every 500 bp)
+	plink --ped $ped --map $map --distance
+
+#IBD/IBS analysis (SNPs thinned to one every 500 bp)
+	plink --ped $ped --map $map --genome-full --ppc-gap 1000
+
+#Pi and Tajima's D
+
+	#Nucleotide Diversity	
+		vcftools –vcf $VCF –window-pi 10000 –out
+
+	#plot nucleotide diversity		
+		R	checking_gatk_output.R
+	
+	#Tajima's D 
+		vcftools --TajimaD 10000 --vcf $VCF --out
+ 	#Plot	R	
+ 		checking_gatk_output.R
+
+#LD
+	# Filter files
+		vcftools --vcf $VCF -from-bp 1000000 --to-bp 22500000 --chr 3L --maf .05
+		--max-maf .95 --recode --out
+
+
+		vcftools --vcf $VCF -from-bp 1000000 --to-bp 26800000 --chr 3R --maf .05
+		--max-maf .95 --recode --out
+
+
+		vcftools --vcf $VCF --from-bp 1800000 --to-bp 21200000 --chr 2R --maf .05 --max-maf .95
+		--recode --out
+
+
+		vcftools --vcf $VCF --from-bp 1000000 --to-bp 20500000 --chr 2L --maf .05
+		--max-maf .95 --recode --out
+
+
+		vcftools --vcf $VCF --from-bp 1800000 --to-bp 19900000 --maf .05 --max-maf
+		.95 --recode --out
+
+	#calculate LD
+		vcftools --vcf $VCF--geno-r2 --ld-window 10000 -ld-window-bp 10000 --min-r2 0 --out 3L_ld_vcf
+
+		vcftools --vcf $VCF --geno-r2 --ld-window 10000 --ld-window-bp 10000 --min-r2 0 --out 3R_ld_vcf
+
+		vcftools --vcf $VCF --geno-r2 --ld-window 10000 --ld-window-bp 10000 --min-r2 0 --out 2R_ld_vcf
+
+		vcftools --vcf $VCF --geno-r2 --ld-window 10000 --ld-window-bp 10000 --min-r2 0 --out 2L_ld_vcf
+
+		vcftools --vcf $VCF --geno-r2 --ld-window 10000 --ld-window-bp 10000 --min-r2 0 --out X_ld_vcf
+
+#See R script Figure_2a_LD_Binning_and_plotting for a description of graphing the
+#output
+#
+#Sensitivity Analysis
+#See script "Calling_SNPs_with_GVCF_indv.txt" and "making_joint_GVCFs.txt"
+
+#Lowered phred cutoff and GVCF calling
+
+#popgen summary statistics done for lowered phred cutoff and GVCF
+
+#PopGen Summary Statistics									
+	#Inbreeding Coefficient			
+		vcftools	vcftools –-vcf $VCF --het	--out			
+	#Relatedness				
+		vcftools --vcf $VCF --relatedness --out
+
+
+#Inbreeding test Retained 88 most inbred gentoypes 
+	vcftools --vcf $VCF -–TajimaD 10000 --exclude –-out	
+
+
+#Heterozygosity vs quality		
+	#per_het_by_qual.sas
+		R		plot_qual_scores.R
+#% genome heterozygosity
+#check total amount excluded due to missing data
+	./vcftools --vcf ../../../../simulans/Haplotype_Caller_merged/simulans_merged_2L.vcf --remove-	indv Sz116 --remove-indv Sz121 --remove-indv Sz158 --remove-indv Sz21 --remove-indv Sz237 --	remove-indv Sz286 --remove-indv Sz76 --remove-indv Sz176 --remove-indv md106ts --remove-indv 	nc485 --remove-indv newc --remove-indv w501 --remove-indv 128 --remove-indv 132 --remove-indv 	176 --remove-indv 74 --remove-indv 84 --remove-indv C167.4 --remove-indv MD106 --remove-indv 	MD199 --remove-indv STE  --remove-indv Sz57 --remove-indv Sz210 --max-missing-count 17 --	remove-indels --min-alleles 2 --max-alleles 2 --recode --out 2L_hets_max17.vcf
+2L
+kept 1041518 out of a possible 1419264 Sites
+
+#make hets into missing data
+
+#replace all heterozygotes with missing data
+		sed 's"0\/1".\/."' $VCF > $VCF
+#run the same script and see the difference
+
+	./vcftools --vcf ../../../../simulans/Haplotype_Caller_merged/simulans_merged_2L.vcf --remove-	indv Sz116 --remove-indv Sz121 --remove-indv Sz158 --remove-indv Sz21 --remove-indv Sz237 --	remove-indv Sz286 --remove-indv Sz76 --remove-indv Sz176 --remove-indv md106ts --remove-indv 	nc485 --remove-indv newc --remove-indv w501 --remove-indv 128 --remove-indv 132 --remove-indv 	176 --remove-indv 74 --remove-indv 84 --remove-indv C167.4 --remove-indv MD106 --remove-indv 	MD199 --remove-indv STE  --remove-indv Sz57 --remove-indv Sz210 --max-missing-count 17 --	remove-indels --min-alleles 2 --max-alleles 2 --recode --out 2L_hets_max17.vcf
+
+1032286 out of a possible 1419264
+
+#Effect of heterozygosity on tajima's D
+	#replace all heterozygotes with missing data
+		sed 's"0\/1".\/."' $VCF > $VCF
+
+	#Calculate Tajima’s D
+		vcftools --vcf $VCF —-TajimaD 10000 --out
+	
+
+	R
+	#read in data
+		x<-read.table("file", header=TRUE, as.is=TRUE) attach(x)
+
+	#loess smoothing
+		y.loess<-loess.smooth(BIN_START, TajimaD, span=.005)
+
+	#plot
+		plot(y.loess, type="l", lwd=4, col="#C90072", ylim=c(-4,4),
+		xlim=c(0,3e+07))
+
+#Effect of missing data on Tajima's D
+	#Calculate Tajima’sD
+		vcftools --vcf  $VCF —-TajimaD 10000 --out
+	
+	R
+	#read in data
+		x<-read.table("file", header=TRUE, as.is=TRUE)
+		attach(x)
+
+	#loess smoothing
+		y.loess<-loess.smooth(BIN_START, TajimaD, span=.005)
+
+	#plot
+		plot(y.loess, type="l", lwd=4, col="#C90072", ylim=c(-4,4), xlim=c(0,3e+07))
+
+#PCA_Analysis
+#See R script PCA_SNPRELATE.R
+
+#Admixture
+
+	#variant normalization
+		/bcftools norm -Ob -m -any vcf -o 
+
+	#reformat file in plink
+		./plink --bcf --keep-allele-order --vcf-idspace-to _ --const-fid --split-x b37 no-fail --make-bed --out output --allow-extra-chr 0
+
+	#do admixture analysis
+		for K in 1 2 3; do ./admixture --cv output.bed $K | tee log${K}.out; done
+
+#Windowed LD analysis
+	#see windowmaker_1mai.py and
+		python windowmaker_1mai.py -v $VCF -e $DESIGN -o $OUTPUT -g $LOG/split_chrX.txt
+	#see run_plink_ld_windowed.qsub
+#LD vs Tajima's D
+	#see compare_td_ld.sas
+
+
+#H12 analysis
+#
+	#remove missing data
+		vcftools --vcf $VCF --max-missing-count 1 --recode --out
+	#convert file format
+		SAS	reformat_vcf_4H12.sas	
+
+	#H12 analysis
+		H12_H2H1.py 170 -w 400 -j 50 -d 0
+	#finding peaks
+		H12peakFinder.py h12_output.txt
+
+	#Looking at the output
+
+		R	H12_viz.R h12_output.txt h12_peaks.txt out 50
+
+		R	hapSpectrum_viz.R h12_peaks.txt out 10 170
+		
+#Checking H12 for lots of missing data (hets)
+
+	for i in (list of top 50 peak centers)
+
+	bash visualizeGenomicData.sh chr_for_h12.csv chr_h12_output.txt $i 401 170 genomicvisualization.$i.pdf
+	
+#H12 vs TajD see R script
